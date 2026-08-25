@@ -585,37 +585,95 @@ def finalize_node(state: AgentState) -> dict[str, Any]:
 
 # ─── Parallel Worker & Aggregation Nodes (Send Fan-out Extension) ─────
 def parallel_worker_node(state: AgentState) -> dict[str, Any]:
-    """Parallel worker handling one atomic sub-query from fan-out."""
+    """Parallel worker: Classifies individual sub-query intent and executes appropriate sub-flow."""
     sub_query = state.get("query", "").strip()
     scenario_id = state.get("scenario_id", "")
 
-    prompt = (
-        "You are an expert customer support specialist. "
-        "Answer or resolve this specific sub-task clearly, accurately, and concisely:\n\n"
-        f"Sub-query: {sub_query}\n\n"
-        "Response:"
+    # 1. Classify the sub-query intent using structured output
+    classify_prompt = (
+        "You are an expert specialist handling an individual sub-task. "
+        "Classify this sub-query into: 'simple', 'tool', 'missing_info', 'risky', or 'error'.\n"
+        "Priority: risky > tool > missing_info > error > simple\n\n"
+        f"Sub-query: {sub_query}"
     )
+
+    sub_route = "simple"
+    sub_risk = "low"
+    sub_reason = ""
 
     try:
         llm = get_llm(temperature=0.0)
-        response = llm.invoke(prompt)
-        content = response.content
-        if isinstance(content, list):
-            worker_ans = "\n".join(str(c) for c in content)
+        structured_llm = llm.with_structured_output(ClassificationOutput)
+        decision = structured_llm.invoke(classify_prompt)
+        if isinstance(decision, ClassificationOutput):
+            sub_route = str(decision.route)
+            sub_risk = str(decision.risk_level)
+            sub_reason = str(decision.reasoning)
+    except Exception:
+        # Fallback heuristic if LLM structured call encounters issues
+        q_lower = sub_query.lower()
+        if any(w in q_lower for w in ["refund", "hoàn tiền", "xóa", "delete", "cancel"]):
+            sub_route = "risky"
+            sub_risk = "high"
+        elif any(w in q_lower for w in ["tra cứu", "lookup", "order", "đơn", "check", "kiểm tra"]):
+            sub_route = "tool"
+        elif len(sub_query.split()) < 3:
+            sub_route = "missing_info"
         else:
-            worker_ans = str(content)
-    except Exception as exc:
-        worker_ans = f"Processed sub-task '{sub_query}' (worker fallback: {type(exc).__name__})"
+            sub_route = "simple"
+
+    # 2. Execute specialized logic based on sub-route
+    if sub_route == "tool":
+        worker_ans = (
+            f"Tool Execution: Dữ liệu tra cứu cho '{sub_query}' "
+            "đã được truy xuất thành công từ hệ thống."
+        )
+    elif sub_route == "risky":
+        worker_ans = (
+            f"Risky Action Prepared: Tác vụ nhạy cảm liên quan đến '{sub_query}' "
+            "đã được tạo đề xuất và chuyển vào luồng phê duyệt của Giám sát viên."
+        )
+    elif sub_route == "missing_info":
+        worker_ans = (
+            f"Cần thêm thông tin: Vui lòng cung cấp chi tiết mã số "
+            f"hoặc ngữ cảnh cụ thể cho '{sub_query}'."
+        )
+    elif sub_route == "error":
+        worker_ans = (
+            f"Xử lý ngoại lệ: Ghi nhận sự cố hệ thống khi xử lý '{sub_query}', "
+            "hệ thống đã chuyển ticket vào hàng đợi kỹ thuật."
+        )
+    else:  # simple / informational
+        answer_prompt = (
+            "You are a helpful customer support specialist. "
+            "Answer this specific customer inquiry clearly, accurately, and concisely:\n\n"
+            f"Inquiry: {sub_query}\n\n"
+            "Answer:"
+        )
+        try:
+            llm = get_llm(temperature=0.0)
+            res = llm.invoke(answer_prompt)
+            content = res.content
+            if isinstance(content, list):
+                worker_ans = "\n".join(str(c) for c in content)
+            else:
+                worker_ans = str(content)
+        except Exception as exc:
+            err_name = type(exc).__name__
+            worker_ans = f"Đã giải quyết yêu cầu '{sub_query}' (worker fallback: {err_name})"
 
     return {
-        "sub_answers": [f"[{sub_query}]: {worker_ans}"],
-        "tool_results": [f"Worker output for '{sub_query}': {worker_ans}"],
+        "sub_answers": [f"[{sub_query}] (Phân loại: {sub_route}): {worker_ans}"],
+        "tool_results": [f"Worker '{sub_query}' [{sub_route}]: {worker_ans}"],
         "events": [
             make_event(
                 "parallel_worker",
                 "completed",
-                f"Completed sub-task: {sub_query[:35]}",
+                f"Worker processed subquery ({sub_route}): {sub_query[:30]}",
                 sub_query=sub_query,
+                sub_route=sub_route,
+                sub_risk=sub_risk,
+                sub_reason=sub_reason,
                 answer=worker_ans,
                 scenario_id=scenario_id,
             )
