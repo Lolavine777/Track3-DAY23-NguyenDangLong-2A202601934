@@ -94,8 +94,8 @@ async def get_graph_structure() -> dict[str, Any]:
         {"id": "prompt_guardrail", "label": "2. Guardrail", "category": "security", "desc": "Prompt Injection Shield", "x": 500, "y": 135},
         {"id": "query_rewrite", "label": "3. Rewrite", "category": "preprocess", "desc": "Decompose & Context", "x": 500, "y": 225},
         
-        {"id": "parallel_worker", "label": "Parallel Worker (Send)", "category": "execution", "desc": "Concurrent Sub-query Workers", "x": 720, "y": 315},
-        {"id": "aggregate_answers", "label": "Answer Aggregator", "category": "llm", "desc": "Fan-in Answer Synthesis", "x": 720, "y": 705},
+        {"id": "parallel_worker", "label": "Parallel Worker (Send)", "category": "execution", "desc": "Sub-query Classify & Run", "x": 740, "y": 360},
+        {"id": "aggregate_answers", "label": "Answer Aggregator", "category": "llm", "desc": "Fan-in Multi-intent Synthesis", "x": 740, "y": 515},
 
         {"id": "classify", "label": "4. Classify", "category": "llm", "desc": "LLM Intent Classifier", "x": 380, "y": 315},
         

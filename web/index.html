@@ -560,6 +560,8 @@
       intake: { border: "border-cyan-500", bg: "bg-cyan-950/70", text: "text-cyan-200", badge: "bg-cyan-500" },
       prompt_guardrail: { border: "border-red-500", bg: "bg-red-950/80", text: "text-red-300", badge: "bg-red-500" },
       query_rewrite: { border: "border-teal-500", bg: "bg-teal-950/80", text: "text-teal-300", badge: "bg-teal-500" },
+      parallel_worker: { border: "border-purple-500", bg: "bg-purple-950/80", text: "text-purple-300", badge: "bg-purple-500" },
+      aggregate_answers: { border: "border-indigo-500", bg: "bg-indigo-950/80", text: "text-indigo-300", badge: "bg-indigo-500" },
       classify: { border: "border-indigo-500", bg: "bg-indigo-950/70", text: "text-indigo-200", badge: "bg-indigo-500" },
       tool: { border: "border-sky-500", bg: "bg-sky-950/70", text: "text-sky-200", badge: "bg-sky-500" },
       evaluate: { border: "border-fuchsia-500", bg: "bg-fuchsia-950/70", text: "text-fuchsia-200", badge: "bg-fuchsia-500" },
@@ -1359,6 +1361,13 @@
       };
 
       const cfg = NODE_COLORS[nodeId] || { border: "border-indigo-500", bg: "bg-indigo-950/70", text: "text-indigo-300" };
+      let subRouteBadge = "";
+      if (nodeId === "parallel_worker" && data.latest_event && data.latest_event.sub_route) {
+        const sr = data.latest_event.sub_route.toUpperCase();
+        const srColor = sr === "RISKY" ? "bg-rose-500/20 text-rose-300 border-rose-500/30" : (sr === "TOOL" ? "bg-sky-500/20 text-sky-300 border-sky-500/30" : "bg-purple-500/20 text-purple-300 border-purple-500/30");
+        subRouteBadge = `<span class="text-[9px] px-1.5 py-0.2 rounded border font-mono font-bold ${srColor}">[${sr}]</span>`;
+      }
+
       const card = document.createElement("div");
       card.setAttribute("id", `step-item-${stepIdx}`);
       card.className = `cloned-step-item p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-brand-500/60 flex items-center justify-between transition-all cursor-pointer font-mono text-xs group`;
@@ -1367,7 +1376,8 @@
         <div class="flex items-center space-x-2">
           <span class="w-5 h-5 rounded-md bg-slate-800 group-hover:bg-brand-500/20 group-hover:text-brand-300 flex items-center justify-center text-[10px] text-slate-400 font-bold">#${stepNum}</span>
           <span class="font-bold ${cfg.text}">${nodeId.toUpperCase()}</span>
-          <span class="text-slate-400 font-sans text-[11px] truncate max-w-[150px]">${data.latest_event ? data.latest_event.message : "Node completed"}</span>
+          ${subRouteBadge}
+          <span class="text-slate-400 font-sans text-[11px] truncate max-w-[180px]">${data.latest_event ? data.latest_event.message : "Node completed"}</span>
         </div>
         <div class="flex items-center space-x-1.5">
           <span class="text-[9px] px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20 opacity-0 group-hover:opacity-100 transition">Inspect State 🔍</span>
