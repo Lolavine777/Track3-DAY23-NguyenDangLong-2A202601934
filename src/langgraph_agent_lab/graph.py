@@ -13,10 +13,11 @@ def build_graph(
     checkpointer: BaseCheckpointSaver | None = None,
     interrupt_before: list[str] | None = None,
 ) -> CompiledStateGraph:
-    """Build and compile the LangGraph workflow with 11 nodes and 4 routing functions."""
+    """Build and compile the LangGraph workflow with parallel fan-out and full orchestration."""
     from langgraph.graph import END, START, StateGraph
 
     from .nodes import (
+        aggregate_answers_node,
         answer_node,
         approval_node,
         ask_clarification_node,
@@ -25,6 +26,7 @@ def build_graph(
         evaluate_node,
         finalize_node,
         intake_node,
+        parallel_worker_node,
         prompt_guardrail_node,
         query_rewrite_node,
         retry_or_fallback_node,
@@ -37,15 +39,17 @@ def build_graph(
         route_after_evaluate,
         route_after_guardrail,
         route_after_retry,
+        route_after_rewrite,
     )
-
 
     builder = StateGraph(AgentState)
 
-    # 1. Register all 13 nodes
+    # 1. Register all 15 nodes
     builder.add_node("intake", intake_node)
     builder.add_node("prompt_guardrail", prompt_guardrail_node)
     builder.add_node("query_rewrite", query_rewrite_node)
+    builder.add_node("parallel_worker", parallel_worker_node)
+    builder.add_node("aggregate_answers", aggregate_answers_node)
     builder.add_node("classify", classify_node)
     builder.add_node("answer", answer_node)
     builder.add_node("tool", tool_node)
@@ -60,7 +64,8 @@ def build_graph(
     # 2. Fixed edges
     builder.add_edge(START, "intake")
     builder.add_edge("intake", "prompt_guardrail")
-    builder.add_edge("query_rewrite", "classify")
+    builder.add_edge("parallel_worker", "aggregate_answers")
+    builder.add_edge("aggregate_answers", "finalize")
     builder.add_edge("tool", "evaluate")
     builder.add_edge("risky_action", "approval")
     builder.add_edge("answer", "finalize")
@@ -79,8 +84,13 @@ def build_graph(
     )
 
     builder.add_conditional_edges(
-        "classify",
+        "query_rewrite",
+        route_after_rewrite,
+        ["parallel_worker", "classify"],
+    )
 
+    builder.add_conditional_edges(
+        "classify",
         route_after_classify,
         {
             "answer": "answer",
@@ -119,4 +129,5 @@ def build_graph(
     )
 
     return builder.compile(checkpointer=checkpointer, interrupt_before=interrupt_before)
+
 

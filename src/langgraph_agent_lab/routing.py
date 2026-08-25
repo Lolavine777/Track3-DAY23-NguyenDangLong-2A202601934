@@ -6,6 +6,10 @@ These strings MUST match node names registered in graph.py.
 
 from __future__ import annotations
 
+from typing import Any
+
+from langgraph.types import Send
+
 from .state import AgentState
 
 
@@ -86,4 +90,36 @@ def route_after_guardrail(state: AgentState) -> str:
     if is_safe:
         return "query_rewrite"
     return "clarify"
+
+
+def route_after_rewrite(state: AgentState) -> list[Any] | str:
+    """Route after query rewrite.
+
+    - If query has multiple distinct intents (is_multi_intent is True and len(sub_queries) > 1),
+      fan-out to parallel workers using LangGraph Send().
+    - Otherwise, proceed to single-intent classification node.
+    """
+    is_multi = state.get("is_multi_intent", False)
+    sub_queries = state.get("sub_queries", [])
+    if is_multi and len(sub_queries) > 1:
+        thread_id = state.get("thread_id", "")
+        scenario_id = state.get("scenario_id", "")
+        return [
+            Send(
+                "parallel_worker",
+                {
+                    "query": sub_q,
+                    "thread_id": thread_id,
+                    "scenario_id": scenario_id,
+                    "sub_answers": [],
+                    "tool_results": [],
+                    "events": [],
+                    "messages": [],
+                    "errors": [],
+                },
+            )
+            for sub_q in sub_queries
+        ]
+    return "classify"
+
 

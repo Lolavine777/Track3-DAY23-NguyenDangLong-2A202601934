@@ -61,6 +61,7 @@ class AgentState(TypedDict, total=False):
     guardrail_reason: str | None
     rewritten_query: str
     sub_queries: list[str]
+    sub_answers: Annotated[list[str], add]
     is_multi_intent: bool
     messages: Annotated[list[str], add]
     tool_results: Annotated[list[str], add]
@@ -104,6 +105,7 @@ def initial_state(scenario: Scenario) -> AgentState:
         "guardrail_reason": None,
         "rewritten_query": scenario.query,
         "sub_queries": [],
+        "sub_answers": [],
         "is_multi_intent": False,
         "messages": [],
         "tool_results": [],

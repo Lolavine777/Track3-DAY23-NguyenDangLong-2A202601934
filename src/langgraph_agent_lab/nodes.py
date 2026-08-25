@@ -581,3 +581,90 @@ def finalize_node(state: AgentState) -> dict[str, Any]:
     return {
         "events": [make_event("finalize", "completed", "workflow finished")],
     }
+
+
+# ─── Parallel Worker & Aggregation Nodes (Send Fan-out Extension) ─────
+def parallel_worker_node(state: AgentState) -> dict[str, Any]:
+    """Parallel worker handling one atomic sub-query from fan-out."""
+    sub_query = state.get("query", "").strip()
+    scenario_id = state.get("scenario_id", "")
+
+    prompt = (
+        "You are an expert customer support specialist. "
+        "Answer or resolve this specific sub-task clearly, accurately, and concisely:\n\n"
+        f"Sub-query: {sub_query}\n\n"
+        "Response:"
+    )
+
+    try:
+        llm = get_llm(temperature=0.0)
+        response = llm.invoke(prompt)
+        content = response.content
+        if isinstance(content, list):
+            worker_ans = "\n".join(str(c) for c in content)
+        else:
+            worker_ans = str(content)
+    except Exception as exc:
+        worker_ans = f"Processed sub-task '{sub_query}' (worker fallback: {type(exc).__name__})"
+
+    return {
+        "sub_answers": [f"[{sub_query}]: {worker_ans}"],
+        "tool_results": [f"Worker output for '{sub_query}': {worker_ans}"],
+        "events": [
+            make_event(
+                "parallel_worker",
+                "completed",
+                f"Completed sub-task: {sub_query[:35]}",
+                sub_query=sub_query,
+                answer=worker_ans,
+                scenario_id=scenario_id,
+            )
+        ],
+    }
+
+
+def aggregate_answers_node(state: AgentState) -> dict[str, Any]:
+    """Fan-in aggregator node: Synthesizes final response from all parallel workers."""
+    original_query = state.get("rewritten_query") or state.get("query", "")
+    sub_answers = state.get("sub_answers", [])
+    tool_results = state.get("tool_results", [])
+
+    context_items = sub_answers or tool_results
+    context_str = "\n\n".join(context_items)
+
+    prompt = (
+        "You are a lead customer support agent synthesizing multiple specialist outputs.\n"
+        f"Original User Request: {original_query}\n\n"
+        f"Specialist Findings from Parallel Workers:\n{context_str}\n\n"
+        "Task: Combine these findings into a unified, polite, well-structured final answer "
+        "addressing all parts of the user's request.\n\n"
+        "Final Synthesis:"
+    )
+
+    try:
+        llm = get_llm(temperature=0.0)
+        response = llm.invoke(prompt)
+        content = response.content
+        if isinstance(content, list):
+            final_answer = "\n".join(str(c) for c in content)
+        else:
+            final_answer = str(content)
+    except Exception:
+        final_answer = (
+            "Here is the summary of your request:\n"
+            + "\n".join(f"- {ans}" for ans in context_items)
+        )
+
+    return {
+        "final_answer": final_answer,
+        "route": "parallel_multi_intent",
+        "events": [
+            make_event(
+                "aggregate_answers",
+                "completed",
+                f"Aggregated {len(sub_answers)} worker results into unified response",
+                worker_count=len(sub_answers),
+            )
+        ],
+    }
+

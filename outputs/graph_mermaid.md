@@ -1,4 +1,4 @@
-# StateGraph Mermaid Architecture
+# StateGraph Mermaid Architecture with Parallel Fan-Out
 
 ```mermaid
 ---
@@ -9,6 +9,10 @@ config:
 graph TD;
 	__start__([<p>__start__</p>]):::first
 	intake(intake)
+	prompt_guardrail(prompt_guardrail)
+	query_rewrite(query_rewrite)
+	parallel_worker(parallel_worker)
+	aggregate_answers(aggregate_answers)
 	classify(classify)
 	answer(answer)
 	tool(tool)
@@ -21,6 +25,7 @@ graph TD;
 	finalize(finalize)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> intake;
+	aggregate_answers --> finalize;
 	answer --> finalize;
 	approval -.-> clarify;
 	approval -.-> tool;
@@ -33,7 +38,12 @@ graph TD;
 	dead_letter --> finalize;
 	evaluate -.-> answer;
 	evaluate -.-> retry;
-	intake --> classify;
+	intake --> prompt_guardrail;
+	parallel_worker --> aggregate_answers;
+	prompt_guardrail -.-> clarify;
+	prompt_guardrail -.-> query_rewrite;
+	query_rewrite -.-> classify;
+	query_rewrite -.-> parallel_worker;
 	retry -.-> dead_letter;
 	retry -.-> tool;
 	risky_action --> approval;
