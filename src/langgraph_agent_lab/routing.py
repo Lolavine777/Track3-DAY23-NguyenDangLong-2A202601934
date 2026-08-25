@@ -64,7 +64,7 @@ def route_after_retry(state: AgentState) -> str:
 def route_after_approval(state: AgentState) -> str:
     """Route based on human approval decision.
 
-    - If approved -> "tool" (proceed with risky action)
+    - If approved -> "tool" (or "finalize" if multi-intent already aggregated)
     - If rejected -> "clarify" (ask user for alternative)
     """
     approval = state.get("approval")
@@ -76,8 +76,25 @@ def route_after_approval(state: AgentState) -> str:
         is_approved = False
 
     if is_approved:
+        if state.get("route") == "parallel_multi_intent":
+            return "finalize"
         return "tool"
     return "clarify"
+
+
+def route_after_aggregation(state: AgentState) -> str:
+    """Decide if aggregated multi-intent result requires HITL supervisor approval.
+
+    - If any subtask was risky and not yet approved -> "approval"
+    - Otherwise -> "finalize"
+    """
+    risk = state.get("risk_level", "low")
+    approval = state.get("approval")
+    is_approved = bool(approval.get("approved")) if isinstance(approval, dict) else False
+    if risk == "high" and not is_approved:
+        return "approval"
+    return "finalize"
+
 
 
 def route_after_guardrail(state: AgentState) -> str:

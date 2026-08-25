@@ -122,7 +122,8 @@ async def get_graph_structure() -> dict[str, Any]:
         {"from": "query_rewrite", "to": "classify", "type": "conditional", "label": "single"},
         
         {"from": "parallel_worker", "to": "aggregate_answers", "type": "fixed", "label": "fan-in"},
-        {"from": "aggregate_answers", "to": "finalize", "type": "fixed", "label": ""},
+        {"from": "aggregate_answers", "to": "approval", "type": "conditional", "label": "risky"},
+        {"from": "aggregate_answers", "to": "finalize", "type": "conditional", "label": "safe"},
 
         {"from": "classify", "to": "answer", "type": "conditional", "label": "simple"},
         {"from": "classify", "to": "tool", "type": "conditional", "label": "tool"},
@@ -133,6 +134,7 @@ async def get_graph_structure() -> dict[str, Any]:
         {"from": "risky_action", "to": "approval", "type": "fixed", "label": ""},
         {"from": "approval", "to": "tool", "type": "conditional", "label": "approved"},
         {"from": "approval", "to": "clarify", "type": "conditional", "label": "rejected"},
+        {"from": "approval", "to": "finalize", "type": "conditional", "label": "multi_done"},
         
         {"from": "tool", "to": "evaluate", "type": "fixed", "label": ""},
         {"from": "evaluate", "to": "answer", "type": "conditional", "label": "success"},
@@ -195,7 +197,9 @@ async def run_stream(req: RunRequest) -> StreamingResponse:
                 yield f"event: node_step\ndata: {json.dumps(node_event)}\n\n"
                 await asyncio.sleep(0.25)
 
-                if node_name == "risky_action":
+                if node_name == "risky_action" or (
+                    node_name == "aggregate_answers" and accumulated_state.get("risk_level") == "high"
+                ):
                     stopped_for_hitl = True
                     break
             if stopped_for_hitl:
@@ -321,7 +325,9 @@ async def chat_stream(req: ChatStreamRequest) -> StreamingResponse:
                             yield f"event: text_chunk\ndata: {json.dumps({'chunk': chunk_text})}\n\n"
                             await asyncio.sleep(0.04)
 
-                if node_name == "risky_action":
+                if node_name == "risky_action" or (
+                    node_name == "aggregate_answers" and accumulated_state.get("risk_level") == "high"
+                ):
                     stopped_for_hitl = True
                     break
             if stopped_for_hitl:
@@ -400,7 +406,23 @@ async def resume_approval(req: ResumeApprovalRequest) -> StreamingResponse:
 
         from langgraph_agent_lab.nodes import answer_node, ask_clarification_node, evaluate_node, finalize_node, tool_node
 
-        if req.approved:
+        if accumulated_state.get("route") == "parallel_multi_intent":
+            if not req.approved:
+                rejection_msg = (
+                    f"Phần tác vụ nhạy cảm trong yêu cầu của bạn đã bị từ chối phê duyệt "
+                    f"({approval_dict['comment']}). Vui lòng liên hệ bộ phận hỗ trợ nếu cần thêm chi tiết."
+                )
+                accumulated_state["final_answer"] = (
+                    f"{accumulated_state.get('final_answer', '')}\n\n[CẬP NHẬT TỪ SUPERVISOR]: {rejection_msg}"
+                )
+                accumulated_state["pending_question"] = rejection_msg
+            
+            fin_up = finalize_node(accumulated_state)
+            path.append("finalize")
+            accumulated_state["events"].extend(fin_up.get("events", []))
+            yield f"event: node_step\ndata: {json.dumps({'node': 'finalize', 'update': fin_up, 'accumulated_path': path, 'latest_event': fin_up['events'][-1], 'timestamp': time.time()})}\n\n"
+            await asyncio.sleep(0.1)
+        elif req.approved:
             tool_up = tool_node(accumulated_state)
             path.append("tool")
             accumulated_state["tool_results"].extend(tool_up.get("tool_results", []))
@@ -428,6 +450,12 @@ async def resume_approval(req: ResumeApprovalRequest) -> StreamingResponse:
                     chunk_text = " ".join(words[idx:idx+3]) + (" " if idx+3 < len(words) else "")
                     yield f"event: text_chunk\ndata: {json.dumps({'chunk': chunk_text})}\n\n"
                     await asyncio.sleep(0.03)
+
+            fin_up = finalize_node(accumulated_state)
+            path.append("finalize")
+            accumulated_state["events"].extend(fin_up.get("events", []))
+            yield f"event: node_step\ndata: {json.dumps({'node': 'finalize', 'update': fin_up, 'accumulated_path': path, 'latest_event': fin_up['events'][-1], 'timestamp': time.time()})}\n\n"
+            await asyncio.sleep(0.1)
         else:
             clarify_up = ask_clarification_node(accumulated_state)
             path.append("clarify")
@@ -443,11 +471,11 @@ async def resume_approval(req: ResumeApprovalRequest) -> StreamingResponse:
                     yield f"event: text_chunk\ndata: {json.dumps({'chunk': chunk_text})}\n\n"
                     await asyncio.sleep(0.03)
 
-        fin_up = finalize_node(accumulated_state)
-        path.append("finalize")
-        accumulated_state["events"].extend(fin_up.get("events", []))
-        yield f"event: node_step\ndata: {json.dumps({'node': 'finalize', 'update': fin_up, 'accumulated_path': path, 'latest_event': fin_up['events'][-1], 'timestamp': time.time()})}\n\n"
-        await asyncio.sleep(0.1)
+            fin_up = finalize_node(accumulated_state)
+            path.append("finalize")
+            accumulated_state["events"].extend(fin_up.get("events", []))
+            yield f"event: node_step\ndata: {json.dumps({'node': 'finalize', 'update': fin_up, 'accumulated_path': path, 'latest_event': fin_up['events'][-1], 'timestamp': time.time()})}\n\n"
+            await asyncio.sleep(0.1)
 
         THREAD_STATES[req.thread_id] = accumulated_state
         latency_ms = int((time.perf_counter() - start_time) * 1000)

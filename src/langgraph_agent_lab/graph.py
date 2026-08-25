@@ -34,6 +34,7 @@ def build_graph(
         tool_node,
     )
     from .routing import (
+        route_after_aggregation,
         route_after_approval,
         route_after_classify,
         route_after_evaluate,
@@ -65,7 +66,6 @@ def build_graph(
     builder.add_edge(START, "intake")
     builder.add_edge("intake", "prompt_guardrail")
     builder.add_edge("parallel_worker", "aggregate_answers")
-    builder.add_edge("aggregate_answers", "finalize")
     builder.add_edge("tool", "evaluate")
     builder.add_edge("risky_action", "approval")
     builder.add_edge("answer", "finalize")
@@ -87,6 +87,15 @@ def build_graph(
         "query_rewrite",
         route_after_rewrite,
         ["parallel_worker", "classify"],
+    )
+
+    builder.add_conditional_edges(
+        "aggregate_answers",
+        route_after_aggregation,
+        {
+            "approval": "approval",
+            "finalize": "finalize",
+        },
     )
 
     builder.add_conditional_edges(
@@ -125,6 +134,7 @@ def build_graph(
         {
             "tool": "tool",
             "clarify": "clarify",
+            "finalize": "finalize",
         },
     )
 

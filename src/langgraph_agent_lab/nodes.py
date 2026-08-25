@@ -690,6 +690,17 @@ def aggregate_answers_node(state: AgentState) -> dict[str, Any]:
     context_items = sub_answers or tool_results
     context_str = "\n\n".join(context_items)
 
+    has_risky = any(
+        "(Phân loại: risky)" in ans or "Risky Action" in ans
+        for ans in (sub_answers + tool_results)
+    )
+    risk_level = "high" if has_risky else "low"
+
+    proposed_actions = [
+        ans for ans in sub_answers if "risky" in ans.lower()
+    ]
+    proposed_action_str = "\n".join(proposed_actions) if proposed_actions else None
+
     prompt = (
         "You are a lead customer support agent synthesizing multiple specialist outputs.\n"
         f"Original User Request: {original_query}\n\n"
@@ -716,13 +727,19 @@ def aggregate_answers_node(state: AgentState) -> dict[str, Any]:
     return {
         "final_answer": final_answer,
         "route": "parallel_multi_intent",
+        "risk_level": risk_level,
+        "proposed_action": proposed_action_str,
         "events": [
             make_event(
                 "aggregate_answers",
                 "completed",
-                f"Aggregated {len(sub_answers)} worker results into unified response",
+                f"Aggregated {len(sub_answers)} worker results (risk={risk_level})",
                 worker_count=len(sub_answers),
+                risk_level=risk_level,
+                has_risky=has_risky,
+                proposed_action=proposed_action_str,
             )
         ],
     }
+
 
