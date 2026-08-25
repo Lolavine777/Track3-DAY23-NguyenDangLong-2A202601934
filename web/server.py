@@ -92,19 +92,23 @@ async def get_graph_structure() -> dict[str, Any]:
     nodes = [
         {"id": "intake", "label": "1. Intake", "category": "ingress", "desc": "Chuẩn hóa query & audit", "x": 500, "y": 45},
         {"id": "prompt_guardrail", "label": "2. Guardrail", "category": "security", "desc": "Prompt Injection Shield", "x": 500, "y": 135},
-        {"id": "query_rewrite", "label": "3. Rewrite", "category": "preprocess", "desc": "Decompose & Context", "x": 380, "y": 225},
+        {"id": "query_rewrite", "label": "3. Rewrite", "category": "preprocess", "desc": "Decompose & Context", "x": 500, "y": 225},
+        
+        {"id": "parallel_worker", "label": "Parallel Worker (Send)", "category": "execution", "desc": "Concurrent Sub-query Workers", "x": 720, "y": 315},
+        {"id": "aggregate_answers", "label": "Answer Aggregator", "category": "llm", "desc": "Fan-in Answer Synthesis", "x": 720, "y": 705},
+
         {"id": "classify", "label": "4. Classify", "category": "llm", "desc": "LLM Intent Classifier", "x": 380, "y": 315},
         
         {"id": "tool", "label": "Tool Node", "category": "execution", "desc": "Execute Tool & Mock", "x": 260, "y": 415},
-        {"id": "risky_action", "label": "Risky Action", "category": "prep", "desc": "Prepare Proposal", "x": 640, "y": 415},
+        {"id": "risky_action", "label": "Risky Action", "category": "prep", "desc": "Prepare Proposal", "x": 500, "y": 415},
         
         {"id": "evaluate", "label": "Evaluate Gate", "category": "gate", "desc": "Check Tool Result", "x": 260, "y": 515},
-        {"id": "approval", "label": "Approval Gate", "category": "hitl", "desc": "HITL Supervisor Gate", "x": 640, "y": 515},
+        {"id": "approval", "label": "Approval Gate", "category": "hitl", "desc": "HITL Supervisor Gate", "x": 500, "y": 515},
         
         {"id": "answer", "label": "Answer Node", "category": "llm", "desc": "Grounded LLM Answer", "x": 120, "y": 625},
         {"id": "retry", "label": "Retry Loop", "category": "recovery", "desc": "Increment Attempt", "x": 370, "y": 625},
-        {"id": "clarify", "label": "Clarify Node", "category": "interaction", "desc": "Ask or Reject Info", "x": 840, "y": 625},
-        {"id": "dead_letter", "label": "Dead Letter", "category": "escalation", "desc": "Escalate to Tier-2", "x": 530, "y": 705},
+        {"id": "clarify", "label": "Clarify Node", "category": "interaction", "desc": "Ask or Reject Info", "x": 880, "y": 625},
+        {"id": "dead_letter", "label": "Dead Letter", "category": "escalation", "desc": "Escalate to Tier-2", "x": 370, "y": 705},
         
         {"id": "finalize", "label": "Finalize Node", "category": "egress", "desc": "Final Audit Trail & End", "x": 500, "y": 795},
     ]
@@ -114,7 +118,12 @@ async def get_graph_structure() -> dict[str, Any]:
         {"from": "prompt_guardrail", "to": "query_rewrite", "type": "conditional", "label": "safe"},
         {"from": "prompt_guardrail", "to": "clarify", "type": "conditional", "label": "blocked"},
         
-        {"from": "query_rewrite", "to": "classify", "type": "fixed", "label": ""},
+        {"from": "query_rewrite", "to": "parallel_worker", "type": "conditional", "label": "multi (Send)"},
+        {"from": "query_rewrite", "to": "classify", "type": "conditional", "label": "single"},
+        
+        {"from": "parallel_worker", "to": "aggregate_answers", "type": "fixed", "label": "fan-in"},
+        {"from": "aggregate_answers", "to": "finalize", "type": "fixed", "label": ""},
+
         {"from": "classify", "to": "answer", "type": "conditional", "label": "simple"},
         {"from": "classify", "to": "tool", "type": "conditional", "label": "tool"},
         {"from": "classify", "to": "clarify", "type": "conditional", "label": "missing"},
@@ -137,6 +146,7 @@ async def get_graph_structure() -> dict[str, Any]:
         {"from": "dead_letter", "to": "finalize", "type": "fixed", "label": ""},
     ]
     return {"nodes": nodes, "edges": edges}
+
 
 
 
