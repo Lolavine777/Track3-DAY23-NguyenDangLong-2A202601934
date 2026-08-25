@@ -1,11 +1,4 @@
-"""Graph smoke tests.
-
-These tests verify end-to-end graph execution. They will fail with NotImplementedError
-until you implement nodes, routing, and graph wiring.
-
-Note: These tests require a configured LLM (OPENAI_API_KEY or ANTHROPIC_API_KEY)
-because classify_node and answer_node use real LLM calls.
-"""
+"""Graph smoke tests requiring a configured real LLM provider."""
 
 import importlib.util
 import os
@@ -43,6 +36,13 @@ def test_graph_runs_and_routes_correctly(query, expected_route):
     scenario = Scenario(id="smoke", query=query, expected_route=Route(expected_route))
     state = initial_state(scenario)
     result = graph.invoke(state, config={"configurable": {"thread_id": state["thread_id"]}})
+    if result.get("route") == Route.RISKY.value and not (result.get("final_answer") or result.get("pending_question")):
+        graph.update_state(
+            {"configurable": {"thread_id": state["thread_id"]}},
+            {"approval": {"approved": True, "reviewer": "smoke-tester", "comment": "approved"}},
+            as_node="approval",
+        )
+        result = graph.invoke(None, config={"configurable": {"thread_id": state["thread_id"]}})
     assert result["route"] == expected_route
     assert result.get("final_answer") or result.get("pending_question")
 
@@ -61,6 +61,14 @@ def test_graph_terminates_all_routes():
         scenario = Scenario(id=f"term-{route.value}", query=query, expected_route=route)
         state = initial_state(scenario)
         result = graph.invoke(state, config={"configurable": {"thread_id": state["thread_id"]}})
+        if route == Route.RISKY:
+            graph.update_state(
+                {"configurable": {"thread_id": state["thread_id"]}},
+                {"approval": {"approved": True, "reviewer": "smoke-tester", "comment": "approved"}},
+                as_node="approval",
+            )
+            result = graph.invoke(None, config={"configurable": {"thread_id": state["thread_id"]}})
         events = result.get("events", [])
         finalize_events = [e for e in events if e.get("node") == "finalize"]
         assert finalize_events, f"Route {route.value} did not reach finalize node"
+
