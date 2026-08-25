@@ -1,4 +1,4 @@
-# StateGraph Mermaid Architecture with Parallel Fan-Out
+# StateGraph Mermaid Architecture
 
 ```mermaid
 ---
@@ -25,9 +25,11 @@ graph TD;
 	finalize(finalize)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> intake;
-	aggregate_answers --> finalize;
+	aggregate_answers -.-> approval;
+	aggregate_answers -.-> finalize;
 	answer --> finalize;
 	approval -.-> clarify;
+	approval -.-> finalize;
 	approval -.-> tool;
 	clarify --> finalize;
 	classify -.-> answer;

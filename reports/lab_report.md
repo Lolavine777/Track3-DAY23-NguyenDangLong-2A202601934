@@ -5,7 +5,7 @@
 - Họ và tên: Nguyễn Đăng Long
 - Mã sinh viên: 2A202601934
 - Repo: Lolavine777/phase2-k3-4-track3-day8-langgraph-agent-2A202601934-NguyenDangLong
-- Commit Hash: `ac3c09d9db37c1ce07b4123533a524e280cafac4`
+- Commit Hash: `5743db40c7a29825756f23d4a949bbe491e30b48`
 - Ngày hoàn thành: 2026-08-25
 - LLM Provider: OpenAI (gpt-4o-mini) với structured outputs
 
@@ -69,13 +69,13 @@ Bảng phân loại các trường trong `AgentState`:
 
 | Kịch bản | Expected | Actual | Kết quả | Retries | Approval | Latency |
 |---|---|---|:---:|---:|---:|---:|
-| `S01_simple` | `simple` | `simple` | **PASS** | 0 | 0 | 49483 ms |
-| `S02_tool` | `tool` | `tool` | **PASS** | 0 | 0 | 8677 ms |
-| `S03_missing` | `missing_info` | `missing_info` | **PASS** | 0 | 0 | 8641 ms |
-| `S04_risky` | `risky` | `risky` | **PASS** | 0 | 1 | 9594 ms |
-| `S05_error` | `error` | `error` | **PASS** | 2 | 0 | 15874 ms |
-| `S06_delete` | `risky` | `risky` | **PASS** | 0 | 1 | 11371 ms |
-| `S07_dead_letter` | `error` | `error` | **PASS** | 1 | 0 | 27564 ms |
+| `S01_simple` | `simple` | `simple` | **PASS** | 0 | 0 | 37641 ms |
+| `S02_tool` | `tool` | `tool` | **PASS** | 0 | 0 | 8732 ms |
+| `S03_missing` | `missing_info` | `missing_info` | **PASS** | 0 | 0 | 17522 ms |
+| `S04_risky` | `risky` | `risky` | **PASS** | 0 | 1 | 39571 ms |
+| `S05_error` | `error` | `error` | **PASS** | 2 | 0 | 9103 ms |
+| `S06_delete` | `risky` | `risky` | **PASS** | 0 | 1 | 10844 ms |
+| `S07_dead_letter` | `error` | `error` | **PASS** | 1 | 0 | 6791 ms |
 
 ## 5. Phân tích các chế độ lỗi (Failure Analysis)
 
