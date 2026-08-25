@@ -57,6 +57,11 @@ class AgentState(TypedDict, total=False):
     pending_question: str | None
     proposed_action: str | None
     approval: dict[str, Any] | None
+    is_safe: bool
+    guardrail_reason: str | None
+    rewritten_query: str
+    sub_queries: list[str]
+    is_multi_intent: bool
     messages: Annotated[list[str], add]
     tool_results: Annotated[list[str], add]
     errors: Annotated[list[str], add]
@@ -95,11 +100,17 @@ def initial_state(scenario: Scenario) -> AgentState:
         "pending_question": None,
         "proposed_action": None,
         "approval": None,
+        "is_safe": True,
+        "guardrail_reason": None,
+        "rewritten_query": scenario.query,
+        "sub_queries": [],
+        "is_multi_intent": False,
         "messages": [],
         "tool_results": [],
         "errors": [],
         "events": [],
     }
+
 
 
 def make_event(

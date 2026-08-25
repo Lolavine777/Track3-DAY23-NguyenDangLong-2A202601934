@@ -47,7 +47,7 @@ def test_rejected_risky_path_never_runs_tool(monkeypatch):
 
 
     event_nodes = [event["node"] for event in result["events"]]
-    assert event_nodes == ["intake", "classify", "risky_action", "approval", "clarify", "finalize"]
+    assert event_nodes == ["intake", "prompt_guardrail", "query_rewrite", "classify", "risky_action", "approval", "clarify", "finalize"]
     assert "tool" not in event_nodes
 
 
@@ -67,5 +67,6 @@ def test_dead_letter_path_stops_at_retry_bound(monkeypatch):
     )
 
     event_nodes = [event["node"] for event in result["events"]]
-    assert event_nodes == ["intake", "classify", "retry", "dead_letter", "finalize"]
+    assert event_nodes == ["intake", "prompt_guardrail", "query_rewrite", "classify", "retry", "dead_letter", "finalize"]
     assert result["attempt"] == 1
+

@@ -1,7 +1,7 @@
 {
   "total_scenarios": 7,
   "success_rate": 1.0,
-  "avg_nodes_visited": 6.428571428571429,
+  "avg_nodes_visited": 8.428571428571429,
   "total_retries": 3,
   "total_interrupts": 2,
   "resume_success": false,
@@ -11,12 +11,12 @@
       "success": true,
       "expected_route": "simple",
       "actual_route": "simple",
-      "nodes_visited": 4,
+      "nodes_visited": 6,
       "retry_count": 0,
       "interrupt_count": 0,
       "approval_required": false,
       "approval_observed": false,
-      "latency_ms": 8983,
+      "latency_ms": 30462,
       "errors": []
     },
     {
@@ -24,12 +24,12 @@
       "success": true,
       "expected_route": "tool",
       "actual_route": "tool",
-      "nodes_visited": 6,
+      "nodes_visited": 8,
       "retry_count": 0,
       "interrupt_count": 0,
       "approval_required": false,
       "approval_observed": false,
-      "latency_ms": 8288,
+      "latency_ms": 10253,
       "errors": []
     },
     {
@@ -37,12 +37,12 @@
       "success": true,
       "expected_route": "missing_info",
       "actual_route": "missing_info",
-      "nodes_visited": 4,
+      "nodes_visited": 6,
       "retry_count": 0,
       "interrupt_count": 0,
       "approval_required": false,
       "approval_observed": false,
-      "latency_ms": 8347,
+      "latency_ms": 8499,
       "errors": []
     },
     {
@@ -50,12 +50,12 @@
       "success": true,
       "expected_route": "risky",
       "actual_route": "risky",
-      "nodes_visited": 8,
+      "nodes_visited": 10,
       "retry_count": 0,
       "interrupt_count": 1,
       "approval_required": true,
       "approval_observed": true,
-      "latency_ms": 15846,
+      "latency_ms": 10646,
       "errors": []
     },
     {
@@ -63,12 +63,12 @@
       "success": true,
       "expected_route": "error",
       "actual_route": "error",
-      "nodes_visited": 10,
+      "nodes_visited": 12,
       "retry_count": 2,
       "interrupt_count": 0,
       "approval_required": false,
       "approval_observed": false,
-      "latency_ms": 5219,
+      "latency_ms": 26839,
       "errors": [
         "Retry attempt 1/3 due to failure",
         "Retry attempt 2/3 due to failure"
@@ -79,12 +79,12 @@
       "success": true,
       "expected_route": "risky",
       "actual_route": "risky",
-      "nodes_visited": 8,
+      "nodes_visited": 10,
       "retry_count": 0,
       "interrupt_count": 1,
       "approval_required": true,
       "approval_observed": true,
-      "latency_ms": 15045,
+      "latency_ms": 46329,
       "errors": []
     },
     {
@@ -92,12 +92,12 @@
       "success": true,
       "expected_route": "error",
       "actual_route": "error",
-      "nodes_visited": 5,
+      "nodes_visited": 7,
       "retry_count": 1,
       "interrupt_count": 0,
       "approval_required": false,
       "approval_observed": false,
-      "latency_ms": 2879,
+      "latency_ms": 40635,
       "errors": [
         "Retry attempt 1/1 due to failure"
       ]

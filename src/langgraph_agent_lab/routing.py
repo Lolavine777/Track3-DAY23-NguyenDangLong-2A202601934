@@ -74,3 +74,16 @@ def route_after_approval(state: AgentState) -> str:
     if is_approved:
         return "tool"
     return "clarify"
+
+
+def route_after_guardrail(state: AgentState) -> str:
+    """Route based on prompt security evaluation.
+
+    - If safe (is_safe == True) -> "query_rewrite" (proceed to query decomposition/refinement)
+    - If unsafe (is_safe == False) -> "clarify" (fail-fast refusal)
+    """
+    is_safe = state.get("is_safe", True)
+    if is_safe:
+        return "query_rewrite"
+    return "clarify"
+

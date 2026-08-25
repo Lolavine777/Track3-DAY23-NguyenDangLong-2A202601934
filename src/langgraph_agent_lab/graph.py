@@ -25,6 +25,8 @@ def build_graph(
         evaluate_node,
         finalize_node,
         intake_node,
+        prompt_guardrail_node,
+        query_rewrite_node,
         retry_or_fallback_node,
         risky_action_node,
         tool_node,
@@ -33,14 +35,17 @@ def build_graph(
         route_after_approval,
         route_after_classify,
         route_after_evaluate,
+        route_after_guardrail,
         route_after_retry,
     )
 
 
     builder = StateGraph(AgentState)
 
-    # 1. Register all 11 nodes
+    # 1. Register all 13 nodes
     builder.add_node("intake", intake_node)
+    builder.add_node("prompt_guardrail", prompt_guardrail_node)
+    builder.add_node("query_rewrite", query_rewrite_node)
     builder.add_node("classify", classify_node)
     builder.add_node("answer", answer_node)
     builder.add_node("tool", tool_node)
@@ -54,7 +59,8 @@ def build_graph(
 
     # 2. Fixed edges
     builder.add_edge(START, "intake")
-    builder.add_edge("intake", "classify")
+    builder.add_edge("intake", "prompt_guardrail")
+    builder.add_edge("query_rewrite", "classify")
     builder.add_edge("tool", "evaluate")
     builder.add_edge("risky_action", "approval")
     builder.add_edge("answer", "finalize")
@@ -64,7 +70,17 @@ def build_graph(
 
     # 3. Conditional edges
     builder.add_conditional_edges(
+        "prompt_guardrail",
+        route_after_guardrail,
+        {
+            "query_rewrite": "query_rewrite",
+            "clarify": "clarify",
+        },
+    )
+
+    builder.add_conditional_edges(
         "classify",
+
         route_after_classify,
         {
             "answer": "answer",
